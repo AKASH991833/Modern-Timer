@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tactical Locket Pro: Compass & Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --primary-glow: rgba(0, 242, 255, 0.6);
+            --bg: #020617;
+            --gold: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            --gold-shadow: rgba(184, 134, 11, 0.5);
+            --text: #f8fafc;
+            --danger: #ff4b4b;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        .theme-pink { --primary: #ff007f; --primary-glow: rgba(255, 0, 127, 0.6); }
+        .theme-yellow { --primary: #ffee00; --primary-glow: rgba(255, 238, 0, 0.6); }
+        .theme-green { --primary: #39ff14; --primary-glow: rgba(57, 255, 20, 0.6); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: var(--bg);
+            background-image: radial-gradient(circle at center, #083344 0%, #020617 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        /* Top System Status Bar */
+        .system-status {
+            position: fixed; top: 0; width: 100%; display: flex; justify-content: space-between;
+            padding: 10px 25px; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+            color: #64748b; letter-spacing: 1px; z-index: 150; pointer-events: none;
+        }
+
+        .top-bar {
+            position: fixed; top: 40px; right: 20px; display: flex; gap: 15px;
+            background: rgba(255, 255, 255, 0.05); padding: 10px 20px;
+            border-radius: 50px; border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); z-index: 100;
+        }
+        .icon-btn { background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; transition: 0.3s; }
+
+        /* Tactical Locket Mount */
+        .locket-container { position: relative; z-index: 5; margin-bottom: 30px; transition: transform 0.5s; }
+        .locket-frame {
+            width: 320px; height: 320px; max-width: 80vw; max-height: 80vw;
+            border-radius: 50%; background: var(--gold);
+            padding: 12px; box-shadow: 0 0 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
+            display: flex; justify-content: center; align-items: center; position: relative;
+        }
+        .clock-inner { width: 100%; height: 100%; border-radius: 50%; background: #020617; position: relative; box-shadow: inset 0 0 40px #000; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+
+        /* Level Indicator */
+        .level-bubble { position: absolute; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; z-index: 12; pointer-events: none; }
+        .bubble-dot { position: absolute; width: 8px; height: 8px; background: var(--primary); border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px var(--primary); transition: transform 0.1s ease-out; }
+
+        /* Clock Elements */
+        .hand { position: absolute; bottom: 50%; left: 50%; transform-origin: bottom center; border-radius: 10px; }
+        .hand.hour { width: 6px; height: 60px; background: white; z-index: 3; margin-left: -3px; }
+        .hand.minute { width: 4px; height: 90px; background: #64748b; z-index: 2; margin-left: -2px; }
+        .hand.second { width: 2px; height: 120px; background: var(--primary); z-index: 4; margin-left: -1px; transition: transform 0.05s cubic-bezier(0.1, 2.7, 0.58, 1); }
+        
+        .marking { position: absolute; width: 2px; height: 10px; background: rgba(255,255,255,0.2); left: 50%; top: 5px; margin-left: -1px; transform-origin: 50% 148px; }
+        .marking.large { height: 18px; background: var(--primary); width: 3px; margin-left: -1.5px; box-shadow: 0 0 10px var(--primary-glow); }
+
+        /* Compass Face */
+        .compass-face { position: absolute; width: 100%; height: 100%; transition: transform 0.15s linear; z-index: 5; }
+        .compass-label { position: absolute; color: var(--primary); font-weight: 900; font-size: 1.8rem; text-shadow: 0 0 10px var(--primary-glow); z-index: 10; }
+        .sub-label { position: absolute; color: rgba(255,255,255,0.4); font-weight: 700; font-size: 0.8rem; z-index: 8; }
+
+        /* Dashboard Area */
+        .controls-area { 
+            width: 100%; max-width: 480px; text-align: center; z-index: 20; 
+            background: rgba(0,0,0,0.6); padding: 25px; border-radius: 35px;
+            backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+        }
+
+        .tabs { display: flex; background: rgba(255,255,255,0.03); padding: 5px; border-radius: 18px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.05); }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: transparent; color: #64748b; cursor: pointer; font-weight: 800; border-radius: 14px; transition: 0.3s; font-size: 0.7rem; letter-spacing: 1px; }
+        .tab-btn.active { background: rgba(255,255,255,0.08); color: var(--primary); text-shadow: 0 0 10px var(--primary-glow); }
+
+        .digital-display { font-family: 'JetBrains Mono', monospace; font-size: 3rem; color: var(--primary); text-shadow: 0 0 20px var(--primary-glow); margin-bottom: 10px; font-weight: 700; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; font-family: 'JetBrains Mono', monospace; }
+        .stat-item { background: rgba(255,255,255,0.02); padding: 12px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.05); text-align: left; }
+        .stat-label { font-size: 0.6rem; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
+        .stat-val { color: var(--text); font-weight: 700; font-size: 0.9rem; }
+
+        .preset-group { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; }
+        .preset-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; cursor: pointer; transition: 0.3s; font-weight: 700; }
+        .preset-btn:active { transform: scale(0.95); background: var(--primary); color: #000; }
+
+        .btn-group { display: flex; gap: 12px; justify-content: center; margin-top: 10px; }
+        .btn { padding: 14px 25px; border: none; border-radius: 15px; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; min-width: 100px; }
+        .btn.primary { background: var(--primary); color: #000; box-shadow: 0 0 20px var(--primary-glow); }
+        .btn.outline { background: transparent; border: 2px solid rgba(255,255,255,0.1); color: white; }
+
+        .hidden { display: none !important; }
+        .timer-inputs input { width: 65px; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--primary); text-align: center; font-size: 1.4rem; font-weight: 700; }
+
+        #accuracy-warning { position: fixed; bottom: 30px; background: var(--danger); color: white; padding: 8px 20px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; display: none; z-index: 200; box-shadow: 0 0 20px var(--danger); }
+
+        @media (max-width: 480px) {
+            .locket-frame { width: 260px; height: 260px; }
+            .marking { transform-origin: 50% 118px; }
+            .compass-label { font-size: 1.4rem; }
+            .digital-display { font-size: 2.2rem; }
+            .controls-area { padding: 20px; width: 95%; margin-top: 10px; }
+            .system-status { padding: 5px 15px; }
+            .top-bar { top: 30px; right: 10px; }
+        }
+    </style>
+</head>
+<body id="main-body">
+
+    <div class="system-status">
+        <div id="live-date">...</div>
+        <div id="sys-battery">BATTERY: --%</div>
+    </div>
+
+    <div id="accuracy-warning">⚠️ CALIBRATE SENSORS</div>
+
+    <div class="top-bar">
+        <button class="icon-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
+        <button class="icon-btn" onclick="toggleFullscreen()">⛶</button>
+        <div class="theme-dots" style="display: flex; gap: 6px; align-items: center; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
+            <div class="dot" style="background:#00f2ff; width:12px; height:12px; border-radius:50%; cursor:pointer;" onclick="setTheme('aqua')"></div>
+            <div class="dot" style="background:#ff007f; width:12px; height:12px; border-radius:50%; cursor:pointer;" onclick="setTheme('pink')"></div>
+            <div class="dot" style="background:#ffee00; width:12px; height:12px; border-radius:50%; cursor:pointer;" onclick="setTheme('yellow')"></div>
+            <div class="dot" style="background:#39ff14; width:12px; height:12px; border-radius:50%; cursor:pointer;" onclick="setTheme('green')"></div>
+        </div>
+    </div>
+
+    <div class="locket-container">
+        <div class="locket-frame">
+            <div class="clock-inner">
+                <!-- Level Indicator -->
+                <div class="level-bubble hidden" id="level-ui"><div class="bubble-dot" id="bubble"></div></div>
+                
+                <!-- Fixed Pointer -->
+                <div style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 18px solid var(--danger); z-index: 50;" class="hidden" id="compass-pointer"></div>
+
+                <!-- Compass -->
+                <div class="compass-face hidden" id="compass-face">
+                    <span class="compass-label" style="top: 15%; left: 50%; transform: translateX(-50%);">N</span>
+                    <span class="compass-label" style="bottom: 15%; left: 50%; transform: translateX(-50%);">S</span>
+                    <span class="compass-label" style="right: 15%; top: 50%; transform: translateY(-50%);">E</span>
+                    <span class="compass-label" style="left: 15%; top: 50%; transform: translateY(-50%);">W</span>
+                    
+                    <span class="sub-label" style="top: 25%; right: 25%;">NE</span>
+                    <span class="sub-label" style="top: 25%; left: 25%;">NW</span>
+                    <span class="sub-label" style="bottom: 25%; right: 25%;">SE</span>
+                    <span class="sub-label" style="bottom: 25%; left: 25%;">SW</span>
+                    <div id="compass-markings"></div>
+                </div>
+
+                <!-- Clock -->
+                <div id="clock-face">
+                    <div id="markings"></div>
+                    <div class="hand hour" id="h-hand"></div>
+                    <div class="hand minute" id="m-hand"></div>
+                    <div class="hand second" id="s-hand"></div>
+                </div>
+                
+                <div style="position: absolute; width: 12px; height: 12px; background: var(--primary); border-radius: 50%; z-index: 15; border: 2px solid white; box-shadow: 0 0 10px var(--primary);"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-area">
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-sw" onclick="switchTab('sw')">STOPWATCH</button>
+            <button class="tab-btn" id="tab-tm" onclick="switchTab('tm')">TIMER</button>
+            <button class="tab-btn" id="tab-cp" onclick="switchTab('cp')">COMPASS</button>
+        </div>
+
+        <!-- Stopwatch -->
+        <div id="sw-section">
+            <div class="digital-display" id="sw-display">00:00:00</div>
+            <div class="btn-group">
+                <button class="btn primary" id="sw-start-btn">START</button>
+                <button class="btn outline" id="sw-reset-btn">RESET</button>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div id="tm-section" class="hidden">
+            <div class="preset-group">
+                <button class="preset-btn" onclick="setTimerPreset(1)">1M</button>
+                <button class="preset-btn" onclick="setTimerPreset(5)">5M</button>
+                <button class="preset-btn" onclick="setTimerPreset(10)">10M</button>
+                <button class="preset-btn" onclick="setTimerPreset(30)">30M</button>
+            </div>
+            <div class="timer-inputs" id="tm-inputs" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 15px;">
+                <input type="number" id="in-h" placeholder="00" min="0">
+                <input type="number" id="in-m" placeholder="00" min="0" max="59">
+                <input type="number" id="in-s" placeholder="00" min="0" max="59">
+            </div>
+            <div class="digital-display hidden" id="tm-display">00:00:00</div>
+            <div class="btn-group">
+                <button class="btn primary" id="tm-start-btn">START</button>
+                <button class="btn outline" id="tm-reset-btn">RESET</button>
+            </div>
+        </div>
+
+        <!-- Compass -->
+        <div id="cp-section" class="hidden">
+            <div class="digital-display" id="cp-degree">--° N</div>
+            <div class="stats-grid">
+                <div class="stat-item"><span class="stat-label">Altitude</span><span class="stat-val" id="alt-val">0 m</span></div>
+                <div class="stat-item"><span class="stat-label">Speed</span><span class="stat-val" id="spd-val">0.0 km/h</span></div>
+                <div class="stat-item"><span class="stat-label">Coordinates</span><span class="stat-val" id="lat-val">0.0000° N</span></div>
+                <div class="stat-item"><span class="stat-label">Heading</span><span class="stat-val" id="dir-name">North</span></div>
+            </div>
+            <button class="btn primary" style="margin-top: 20px; width: 100%;" id="cp-init-btn" onclick="initCompass()">INITIALIZE SENSORS</button>
+        </div>
+    </div>
+
+    <script>
+        let isMuted = false, currentMode = 'sw';
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function viber() { if(navigator.vibrate) navigator.vibrate(10); }
+
+        function playSound(freq, duration) {
+            if (isMuted) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        // Live Info
+        function updateSystem() {
+            document.getElementById('live-date').innerText = new Date().toDateString().toUpperCase();
+            if(navigator.getBattery) {
+                navigator.getBattery().then(b => {
+                    document.getElementById('sys-battery').innerText = `BATTERY: ${Math.round(b.level * 100)}%`;
+                }).catch(() => document.getElementById('sys-battery').innerText = "");
+            }
+        }
+        setInterval(updateSystem, 10000); updateSystem();
+
+        // Markings Setup
+        function setupMarkings(id, count) {
+            const container = document.getElementById(id);
+            container.innerHTML = "";
+            const radius = window.innerWidth <= 480 ? 118 : 148;
+            for(let i=0; i<count; i++) {
+                const mark = document.createElement('div');
+                mark.className = i % 5 === 0 ? 'marking large' : 'marking';
+                mark.style.transformOrigin = `50% ${radius}px`;
+                mark.style.transform = `rotate(${i * (360/count)}deg)`;
+                container.appendChild(mark);
+            }
+        }
+        setupMarkings('markings', 60); setupMarkings('compass-markings', 72);
+        window.onresize = () => { setupMarkings('markings', 60); setupMarkings('compass-markings', 72); };
+
+        function setTheme(t) { viber(); document.body.className = t === 'aqua' ? '' : 'theme-' + t; }
+        function toggleMute() { viber(); isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? '🔇' : '🔊'; }
+        function toggleFullscreen() { viber(); if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); else document.exitFullscreen(); }
+
+        // Core Logic
+        const sHand = document.getElementById('s-hand'), mHand = document.getElementById('m-hand'), hHand = document.getElementById('h-hand');
+        let lastT = -1;
+
+        function updateClock(ms) {
+            const s = (ms/1000)%60, m = (ms/60000)%60, h = (ms/3600000)%12;
+            sHand.style.transform = `rotate(${s*6}deg)`;
+            mHand.style.transform = `rotate(${m*6}deg)`;
+            hHand.style.transform = `rotate(${h*30 + m*0.5}deg)`;
+            if(Math.floor(s) !== lastT) { playSound(1000, 0.05); lastT = Math.floor(s); }
+        }
+
+        let currentH = 0;
+        function initCompass() {
+            viber();
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(pos => {
+                    document.getElementById('lat-val').innerText = `${pos.coords.latitude.toFixed(4)}° N`;
+                    document.getElementById('alt-val').innerText = `${(pos.coords.altitude || 0).toFixed(0)} m`;
+                    document.getElementById('spd-val').innerText = `${((pos.coords.speed || 0) * 3.6).toFixed(1)} km/h`;
+                    document.getElementById('lon-val').innerText = `${pos.coords.longitude.toFixed(4)}° E`;
+                }, null, { enableHighAccuracy: true });
+            }
+            window.addEventListener('deviceorientationabsolute', handleSensors, true);
+            window.addEventListener('deviceorientation', handleSensors, true);
+            document.getElementById('cp-init-btn').classList.add('hidden');
+        }
+
+        function handleSensors(e) {
+            if (currentMode !== 'cp') return;
+            let heading = e.webkitCompassHeading || (360 - e.alpha);
+            if (heading) {
+                currentH = currentH + (heading - currentH) * 0.2; // Smooth filter
+                document.getElementById('compass-face').style.transform = `rotate(${-currentH}deg)`;
+                let dir = "North";
+                if (heading > 22 && heading <= 67) dir = "N-East";
+                else if (heading > 67 && heading <= 112) dir = "East";
+                else if (heading > 112 && heading <= 157) dir = "S-East";
+                else if (heading > 157 && heading <= 202) dir = "South";
+                else if (heading > 202 && heading <= 247) dir = "S-West";
+                else if (heading > 247 && heading <= 292) dir = "West";
+                else if (heading > 292 && heading <= 337) dir = "N-West";
+                document.getElementById('cp-degree').innerText = `${Math.round(heading)}°`;
+                document.getElementById('dir-name').innerText = dir;
+            }
+            const b = document.getElementById('bubble');
+            const x = Math.max(-15, Math.min(15, e.gamma / 2)), y = Math.max(-15, Math.min(15, e.beta / 2));
+            b.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+        }
+
+        function switchTab(mode) {
+            viber(); currentMode = mode;
+            ['sw', 'tm', 'cp'].forEach(m => {
+                document.getElementById(`tab-${m}`).classList.toggle('active', mode === m);
+                document.getElementById(`${m}-section`).classList.toggle('hidden', mode !== m);
+            });
+            document.getElementById('clock-face').classList.toggle('hidden', mode === 'cp');
+            document.getElementById('compass-face').classList.toggle('hidden', mode !== 'cp');
+            document.getElementById('compass-pointer').classList.toggle('hidden', mode !== 'cp');
+            document.getElementById('level-ui').classList.toggle('hidden', mode !== 'cp');
+        }
+
+        // SW & TM Logic
+        let swS=0, swE=0, swI;
+        document.getElementById('sw-start-btn').onclick = function() {
+            viber();
+            if(this.innerText==='START'){ swS=Date.now()-swE; swI=setInterval(()=>{swE=Date.now()-swS; document.getElementById('sw-display').innerText=new Date(swE).toISOString().substr(11,8); updateClock(swE);},50); this.innerText='PAUSE'; }
+            else { clearInterval(swI); this.innerText='START'; }
+        };
+        document.getElementById('sw-reset-btn').onclick = () => { viber(); clearInterval(swI); swE=0; document.getElementById('sw-display').innerText='00:00:00'; updateClock(0); document.getElementById('sw-start-btn').innerText='START'; };
+
+        let tmR=0, tmI;
+        function setTimerPreset(m) { viber(); document.getElementById('in-m').value = m; document.getElementById('in-h').value = 0; document.getElementById('in-s').value = 0; }
+        document.getElementById('tm-start-btn').onclick = function() {
+            viber();
+            if(this.innerText==='START'){
+                if(tmR<=0) tmR = ((parseInt(document.getElementById('in-h').value)||0)*3600 + (parseInt(document.getElementById('in-m').value)||0)*60 + (parseInt(document.getElementById('in-s').value)||0))*1000;
+                if(tmR>0){ document.getElementById('tm-inputs').classList.add('hidden'); document.getElementById('tm-display').classList.remove('hidden');
+                tmI=setInterval(()=>{tmR-=100; if(tmR<=0){clearInterval(tmI); viber(); playSound(800, 0.5); alert("Time up!"); resetT();} document.getElementById('tm-display').innerText=new Date(tmR).toISOString().substr(11,8); updateClock(tmR);},100); this.innerText='PAUSE'; }
+            } else { clearInterval(tmI); this.innerText='START'; }
+        };
+        function resetT(){ clearInterval(tmI); tmR=0; document.getElementById('tm-display').classList.add('hidden'); document.getElementById('tm-inputs').classList.remove('hidden'); document.getElementById('tm-start-btn').innerText='START'; updateClock(0); }
+        document.getElementById('tm-reset-btn').onclick = () => { viber(); resetT(); };
+    </script>
+</body>
+</html>
